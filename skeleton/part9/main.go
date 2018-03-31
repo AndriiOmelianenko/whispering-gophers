@@ -23,15 +23,19 @@ import (
 	"sync"
 
 	"github.com/campoy/whispering-gophers/util"
+	"strings"
 )
 
 var (
 	peerAddr = flag.String("peer", "", "peer host:port")
+	myname   = flag.String("myname", "", "myname name")
 	self     string
 )
 
 type Message struct {
 	// TODO: add ID field
+	ID   string
+	Name string
 	Addr string
 	Body string
 }
@@ -118,7 +122,12 @@ func serve(c net.Conn) {
 		}
 
 		// TODO: If this message has seen before, ignore it.
-
+		if strings.Contains(m.Body, "Spam") {
+			continue
+		}
+		if _, ok := seenmsgs.mm[m.ID]; ok {
+			continue
+		}
 		fmt.Printf("%#v\n", m)
 		broadcast(m)
 		go dial(m.Addr)
@@ -130,11 +139,23 @@ func readInput() {
 	for s.Scan() {
 		m := Message{
 			// TODO: use util.RandomID to populate the ID field.
+			ID:   util.RandomID(),
+			Name: *myname,
 			Addr: self,
 			Body: s.Text(),
 		}
 		// TODO: Mark the message ID as seen.
-		broadcast(m)
+		Seen(m.ID)
+		bodyParse := strings.SplitN(m.Body, "|", 2)
+		if len(bodyParse) > 1 {
+			m.Body = bodyParse[1]
+			if _, ok := peers.m[bodyParse[0]]; ok {
+				peers.m[bodyParse[0]] <- m
+			}
+		} else {
+			broadcast(m)
+		}
+
 	}
 	if err := s.Err(); err != nil {
 		log.Fatal(err)
@@ -157,6 +178,7 @@ func dial(addr string) {
 		log.Println(addr, err)
 		return
 	}
+	log.Println("Connected to", addr)
 	defer c.Close()
 
 	e := json.NewEncoder(c)
@@ -169,12 +191,25 @@ func dial(addr string) {
 	}
 }
 
+var seenmsgs = SeenMessages{mm: make(map[string]bool)}
+
 // TODO: Create a new map of seen message IDs and a mutex to protect it.
+type SeenMessages struct {
+	mm map[string]bool
+	mu sync.RWMutex
+}
 
 // Seen returns true if the specified id has been seen before.
 // If not, it returns false and marks the given id as "seen".
 func Seen(id string) bool {
 	// TODO: Get a write lock on the seen message IDs map and unlock it at before returning.
+	seenmsgs.mu.RLock()
+	defer seenmsgs.mu.RUnlock()
 	// TODO: Check if the id has been seen before and return that later.
+	if _, ok := seenmsgs.mm[id]; ok {
+		return true
+	}
 	// TODO: Mark the ID as seen in the map.
+	seenmsgs.mm[id] = true
+	return false
 }

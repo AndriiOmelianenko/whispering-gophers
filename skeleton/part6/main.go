@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	peerAddr = flag.String("peer", "", "peer host:port")
+	peerAddr = flag.String("peer", "localhost:8000", "peer host:port")
 	self     string
 )
 
@@ -65,6 +65,7 @@ func serve(c net.Conn) {
 }
 
 // TODO: Make a new channel of Messages.
+var channelMessages = make(chan Message)
 
 func readInput() {
 	s := bufio.NewScanner(os.Stdin)
@@ -74,6 +75,7 @@ func readInput() {
 			Body: s.Text(),
 		}
 		// TODO: Send the message to the channel of messages.
+		channelMessages <- m
 	}
 	if err := s.Err(); err != nil {
 		log.Fatal(err)
@@ -90,7 +92,7 @@ func dial(addr string) {
 
 	e := json.NewEncoder(c)
 
-	for /* TODO: Receive messages from the channel using range, storing them in the variable m. */ {
+	for m := range channelMessages /* TODO: Receive messages from the channel using range, storing them in the variable m. */ {
 		err := e.Encode(m)
 		if err != nil {
 			log.Println(addr, err)

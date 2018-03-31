@@ -33,8 +33,8 @@ import (
 )
 
 var (
-	listenAddr = flag.String("listen", "", "host:port to listen on")
-	dialAddr   = flag.String("dial", "", "host:port to dial")
+	listenAddr = flag.String("listen", "localhost:8001", "host:port to listen on")
+	dialAddr   = flag.String("dial", "localhost:8000", "host:port to dial")
 )
 
 type Message struct {
@@ -45,11 +45,13 @@ func main() {
 	flag.Parse()
 
 	// TODO: Launch dial in a new goroutine, passing in *dialAddr.
+	go dial(*dialAddr)
 
 	l, err := net.Listen("tcp", *listenAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("started server at", *listenAddr)
 	for {
 		c, err := l.Accept()
 		if err != nil {
@@ -75,4 +77,24 @@ func serve(c net.Conn) {
 
 func dial(addr string) {
 	// TODO: put the contents of the main function from part 2 here.
+	// TODO: Open a new connection using the value of the "dial" flag.
+	c, err := net.Dial("tcp", addr)
+	// TODO: Don't forget to check the error.
+	if err != nil {
+		log.Print(err)
+	}
+	log.Println("connected to", addr)
+	s := bufio.NewScanner(os.Stdin)
+	// TODO: Create a json.Encoder writing into the connection you created before.
+	e := json.NewEncoder(c)
+	for s.Scan() {
+		m := Message{Body: s.Text()}
+		err := e.Encode(m)
+		if err != nil {
+			log.Print(err)
+		}
+	}
+	if err := s.Err(); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	peerAddr = flag.String("peer", "", "peer host:port")
+	peerAddr = flag.String("peer", "localhost:8000", "peer host:port")
 	self     string
 )
 
@@ -48,8 +48,14 @@ func main() {
 	flag.Parse()
 
 	// TODO: Create a new listener using util.Listen and put it in a variable named l.
+	l, err := util.Listen()
+	if err != nil {
+		log.Fatal(err)
+	}
 	// TODO: Set the global variable self with the address of the listener.
+	self = fmt.Sprint(l.Addr())
 	// TODO: Print the address to the standard output
+	log.Println("Listening on", self)
 
 	go dial(*peerAddr)
 
@@ -81,12 +87,14 @@ func dial(addr string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("connected to", addr)
 
 	s := bufio.NewScanner(os.Stdin)
 	e := json.NewEncoder(c)
 	for s.Scan() {
 		m := Message{
 			// TODO: Put the self variable in the new Addr field.
+			Addr: self,
 			Body: s.Text(),
 		}
 		err := e.Encode(m)

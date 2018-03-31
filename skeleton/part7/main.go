@@ -63,30 +63,44 @@ type Peers struct {
 // If an address already exists in the registry, it returns nil.
 func (p *Peers) Add(addr string) <-chan Message {
 	// TODO: Take the write lock on p.mu. Unlock it before returning (using defer).
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	// TODO: Check if the address is already in the peers map under the key addr.
 	// TODO: If it is, return nil.
-
+	if _, ok := p.m[addr]; ok {
+		return nil
+	}
 	// TODO: Make a new channel of messages
+	msgch := make(chan Message)
 	// TODO: Add it to the peers map
+	p.m[addr] = msgch
 	// TODO: Return the newly created channel.
+	return msgch
 }
 
 // Remove deletes the specified peer from the registry.
 func (p *Peers) Remove(addr string) {
 	// TODO: Take the write lock on p.mu. Unlock it before returning (using defer).
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	// TODO: Delete the peer from the peers map.
+	delete(p.m, addr)
 }
 
 // List returns a slice of all active peer channels.
 func (p *Peers) List() []chan<- Message {
 	// TODO: Take the read lock on p.mu. Unlock it before returning (using defer).
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	// TODO: Declare a slice of chan<- Message.
-
-	for /* TODO: Iterate over the map using range */ {
+	sliceMessages := make([]chan<- Message, 0, 0)
+	for k := range p.m /* TODO: Iterate over the map using range */ {
 		// TODO: Append each channel into the slice.
+		sliceMessages = append(sliceMessages, p.m[k])
 	}
 	// TODO: Return the slice.
+	return sliceMessages
 }
 
 func serve(c net.Conn) {
